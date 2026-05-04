@@ -33,13 +33,27 @@ DEFAULT_MODEL = (
 )
 
 
+_USE_ANSI = sys.stdout.isatty() and sys.stderr.isatty()
+_DIM = "\033[2;37m" if _USE_ANSI else ""
+_RESET = "\033[0m" if _USE_ANSI else ""
+
+
+def _dim(text: str) -> str:
+    return f"{_DIM}{text}{_RESET}"
+
+
 class _Spinner:
-    """Minimal stderr spinner: shows label with elapsed seconds + a rotating glyph."""
+    """Minimal stderr spinner: shows label with elapsed seconds + a rotating glyph.
+
+    On exit, either prints "<label> done in N.Ns." or clears the line in
+    place (clear_on_exit=True) so the spinner leaves no trace.
+    """
 
     _GLYPHS = "|/-\\"
 
-    def __init__(self, label: str) -> None:
+    def __init__(self, label: str, clear_on_exit: bool = False) -> None:
         self._label = label
+        self._clear = clear_on_exit
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
@@ -51,27 +65,33 @@ class _Spinner:
     def __exit__(self, *exc: object) -> None:
         self._stop.set()
         self._thread.join()
-        elapsed = time.time() - self._t0
-        sys.stderr.write(f"\r{self._label} done in {elapsed:.1f}s.{' ' * 20}\n")
+        if self._clear:
+            sys.stderr.write("\r" + " " * (len(self._label) + 20) + "\r")
+        else:
+            elapsed = time.time() - self._t0
+            sys.stderr.write(f"\r{self._label} done in {elapsed:.1f}s.{' ' * 20}\n")
         sys.stderr.flush()
 
     def _run(self) -> None:
         i = 0
         while not self._stop.is_set():
             elapsed = time.time() - self._t0
-            sys.stderr.write(f"\r{self._label} {self._GLYPHS[i % 4]} {elapsed:5.1f}s")
+            sys.stderr.write(
+                f"\r{_DIM}{self._label} {self._GLYPHS[i % 4]} {elapsed:5.1f}s{_RESET}",
+            )
             sys.stderr.flush()
             i += 1
             self._stop.wait(0.1)
 
 
 def run_turn(model: FunctionGemmaModel, dispatcher: Dispatcher, prompt: str) -> None:
-    print(f"  > {prompt}")
-    result = model.generate(prompt)
-    names = [c.name for c in result.tool_calls]
-    print(f"  ({len(result.tool_calls)} call(s) in {result.latency_ms:.0f} ms: {names})")
+    with _Spinner("thinking", clear_on_exit=True):
+        result = model.generate(prompt)
     for call_result in dispatcher.dispatch_all(result.tool_calls):
-        print(f"    - {call_result}")
+        print(f"  {call_result}")
+    n = len(result.tool_calls)
+    plural = "s" if n != 1 else ""
+    print(_dim(f"  ({n} tool call{plural} · {result.latency_ms:.0f} ms)"))
 
 
 def main() -> None:
@@ -107,10 +127,10 @@ def main() -> None:
     with _Spinner("Warming up (one-time ~50s prefill on the 2-core A55)"):
         model.generate("hello")
 
-    print("\nReady. Ctrl-D or empty line to exit.\n")
+    print(_dim("Ready. Ctrl-D or empty line to exit."))
     while True:
         try:
-            prompt = input("prompt> ").strip()
+            prompt = input(">>> ").strip()
         except (EOFError, KeyboardInterrupt):
             print()
             break
