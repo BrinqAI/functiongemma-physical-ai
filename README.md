@@ -52,11 +52,11 @@ and `gstreamer`.
 
 ## Installation
 
-Clone the repository and enter this directory:
+Clone the repository:
 
 ```bash
-git clone https://github.com/synaptics-astra-demos-stg/sl2610-examples.git
-cd sl2610-examples/functiongemma
+git clone https://github.com/BrinqAI/functiongemma-physical-ai.git
+cd functiongemma-physical-ai
 ```
 
 Set up a Python virtual environment that inherits the system PyQt5 and
