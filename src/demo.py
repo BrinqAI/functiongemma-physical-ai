@@ -16,6 +16,9 @@ to drive an Adafruit Mini Sparkle Motion + WS2812B ring over USB-CDC.
 from __future__ import annotations
 
 import argparse
+import sys
+import threading
+import time
 from pathlib import Path
 
 from dispatcher import Dispatcher
@@ -28,6 +31,38 @@ DEFAULT_MODEL = (
     Path(__file__).resolve().parent.parent
     / "models" / "functiongemma-physical-ai-Q4_K_M.gguf"
 )
+
+
+class _Spinner:
+    """Minimal stderr spinner: shows label with elapsed seconds + a rotating glyph."""
+
+    _GLYPHS = "|/-\\"
+
+    def __init__(self, label: str) -> None:
+        self._label = label
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+
+    def __enter__(self) -> "_Spinner":
+        self._t0 = time.time()
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._stop.set()
+        self._thread.join()
+        elapsed = time.time() - self._t0
+        sys.stderr.write(f"\r{self._label} done in {elapsed:.1f}s.{' ' * 20}\n")
+        sys.stderr.flush()
+
+    def _run(self) -> None:
+        i = 0
+        while not self._stop.is_set():
+            elapsed = time.time() - self._t0
+            sys.stderr.write(f"\r{self._label} {self._GLYPHS[i % 4]} {elapsed:5.1f}s")
+            sys.stderr.flush()
+            i += 1
+            self._stop.wait(0.1)
 
 
 def run_turn(model: FunctionGemmaModel, dispatcher: Dispatcher, prompt: str) -> None:
@@ -56,8 +91,8 @@ def main() -> None:
                    help="WLED serial baud rate (default 115200)")
     args = p.parse_args()
 
-    print(f"Loading model from {args.model}")
-    model = FunctionGemmaModel(str(args.model))
+    with _Spinner(f"Loading model from {args.model.name}"):
+        model = FunctionGemmaModel(str(args.model))
 
     wled = WLEDSerialClient(port=args.wled_port, baud=args.wled_baud) \
         if args.wled_port else None
@@ -67,12 +102,15 @@ def main() -> None:
         run_turn(model, dispatcher, args.prompt)
         return
 
-    print("Interactive mode. First turn pays a one-time prefill (~45-50 s on "
-          "the 2-core A55); turn 2+ is sub-second thanks to the prefix cache. "
-          "Ctrl-D or empty line to exit.")
+    # Prime the prefix cache up front so turn 1 from the user is sub-second.
+    # This pays the ~48 s cold prefill once, visibly, before we accept input.
+    with _Spinner("Warming up (one-time ~50s prefill on the 2-core A55)"):
+        model.generate("hello")
+
+    print("\nReady. Ctrl-D or empty line to exit.\n")
     while True:
         try:
-            prompt = input("\nprompt> ").strip()
+            prompt = input("prompt> ").strip()
         except (EOFError, KeyboardInterrupt):
             print()
             break
