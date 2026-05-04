@@ -5,7 +5,7 @@ per call, ~5x faster decode than canonical JSON on the 2-core A55):
 
     <tool_2>("red")<end>           -> set_led_color(color="red")
     <tool_5>("beep")<end>          -> play_buzzer(pattern="beep")
-    <tool_12>("hello there")<end>  -> respond(message="hello there")
+    <tool_10>("hello there")<end>  -> respond(message="hello there")
 
 Argument order is positional: required params first, then optional params in
 schema declaration order. Trailing nulls are trimmed.
@@ -32,9 +32,7 @@ TOKEN_TO_NAME: dict[str, str | None] = {
     "<tool_7>": "cancel_alarm",
     "<tool_8>": "list_alarms",
     "<tool_9>": "get_system_status",
-    "<tool_10>": "capture_photo",
-    "<tool_11>": "describe_scene",
-    "<tool_12>": "respond",
+    "<tool_10>": "respond",
     "<tool_none>": None,
 }
 

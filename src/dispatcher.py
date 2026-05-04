@@ -40,8 +40,6 @@ class Dispatcher:
             "cancel_alarm": self._cancel_alarm,
             "list_alarms": self._list_alarms,
             "get_system_status": self._status,
-            "capture_photo": self._photo,
-            "describe_scene": self._describe,
             "respond": self._respond,
         }
 
@@ -123,20 +121,6 @@ class Dispatcher:
     def _status(self, args: dict[str, Any]) -> DispatchResult:
         result = self._hw.get_system_status(metric=args.get("metric", "all"))
         return DispatchResult("get_system_status", "ok", f"{result}", detail=result)
-
-    def _photo(self, args: dict[str, Any]) -> DispatchResult:
-        path = self._hw.capture_photo(save_as=args.get("save_as"))
-        return DispatchResult("capture_photo", "ok", f"saved {path}",
-                              detail={"path": path})
-
-    def _describe(self, args: dict[str, Any]) -> DispatchResult:
-        # Vision model wiring is a follow-up. Capture the photo and report.
-        path = self._hw.capture_photo(save_as=args.get("save_as"))
-        return DispatchResult(
-            "describe_scene", "ok",
-            "scene description not yet wired (Gemma3 vision on Torq is a follow-up)",
-            detail={"photo": path},
-        )
 
     def _respond(self, args: dict[str, Any]) -> DispatchResult:
         message = str(args.get("message", ""))

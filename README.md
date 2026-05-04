@@ -18,7 +18,7 @@ functiongemma
 ├── requirements.txt            Pure-Python deps
 ├── setup_wayland.sh            Wayland env vars (source before running PyQt)
 ├── llama_cpp_python-...whl     Bundled aarch64 wheel for the SL2619
-├── tools.json                  13-tool function schema
+├── tools.json                  11-tool function schema
 ├── models/                     Place the GGUF here (see below)
 └── src/
     ├── demo.py                 CLI: python3 demo.py --prompt "..."
@@ -75,11 +75,11 @@ pip install ./llama_cpp_python-0.3.16-cp312-cp312-linux_aarch64.whl
 pip install -r requirements.txt
 ```
 
-Download the fine-tuned GGUF model (253 MB, Q4_K_M, compact format):
+Download the fine-tuned GGUF model (260 MB, Q5_K_M, compact format, v6):
 
 ```bash
 mkdir -p models && cd models
-wget https://huggingface.co/BrinqAI/functiongemma-270m-physical-ai/resolve/main/functiongemma-physical-ai-Q4_K_M.gguf
+wget https://huggingface.co/BrinqAI/functiongemma-270m-physical-ai/resolve/main/functiongemma-physical-ai-v6-Q5_K_M.gguf
 cd ..
 ```
 
@@ -115,7 +115,7 @@ See [`README_pyQt.md`](./README_pyQt.md).
 ## Expected output
 
 ```
-[1/3] Loading model from /home/root/sl2610-examples/functiongemma/models/functiongemma-physical-ai-Q4_K_M.gguf
+[1/3] Loading model from /home/root/functiongemma-physical-ai/models/functiongemma-physical-ai-v6-Q5_K_M.gguf
 [2/3] Running inference on prompt: 'Turn the lights red and beep twice'
   -> 2 tool call(s) in 612 ms: ['set_led_color', 'play_buzzer']
 [3/3] Dispatching to hardware
@@ -123,7 +123,7 @@ See [`README_pyQt.md`](./README_pyQt.md).
   - play_buzzer: pattern = double_beep
 ```
 
-## Tool schema (13 functions)
+## Tool schema (11 functions)
 
 | Tool | Args | Effect |
 |---|---|---|
@@ -137,9 +137,9 @@ See [`README_pyQt.md`](./README_pyQt.md).
 | `cancel_alarm` | label? | Cancel one or all alarms |
 | `list_alarms` | - | List active alarms |
 | `get_system_status` | metric? | CPU / memory / temperature / NPU |
-| `capture_photo` | save_as? | Single-frame JPEG via gst-launch on /dev/video0 |
-| `describe_scene` | question? | Capture + (vision model wiring is a follow-up) |
 | `respond` | message | Natural-language reply when no tool fits |
+
+> Camera + vision tools (`capture_photo`, `describe_scene`) were dropped in v6 — out of scope for this demo. Camera-related prompts are routed to `respond` instead.
 
 The full schema with descriptions lives in `tools.json`.
 
@@ -147,15 +147,16 @@ The full schema with descriptions lives in `tools.json`.
 
 - **Coral Dev Board (SL2619)** with the Grinn Coral HAT — RGB status LEDs at
   `/sys/class/leds/{red,green,blue}:status/brightness`, piezo buzzer on
-  `BUZZERn` (binary GPIO), OV5647 camera at `/dev/video0`.
+  `BUZZERn` (binary GPIO).
 - **Optional Adafruit Mini Sparkle Motion (6314)** running WLED firmware,
   enumerated as `/dev/ttyACM0` over USB-CDC. Drives a 36-pixel WS2812B
   ring (Adafruit 2539). Pass `--wled-port /dev/ttyACM0` to enable.
 
 ## Model
 
-`huggingface.co/BrinqAI/functiongemma-270m-physical-ai` -
-`functiongemma-physical-ai-Q4_K_M.gguf`. Base model `google/functiongemma-270m-it`,
-fine-tuned on 367 train / 100 eval examples covering all 13 tools and
-multi-tool routines. Compact output format (`<tool_N>(args)<end>`) for
-~5x faster decode on the 2-core A55 CPU.
+`huggingface.co/BrinqAI/functiongemma-270m-physical-ai` —
+`functiongemma-physical-ai-v6-Q5_K_M.gguf`. Base model `google/functiongemma-270m-it`,
+fine-tuned on 2000 train / 200 eval examples covering all 11 tools and
+multi-tool routines (200 row eval: single-tool routing **95.5%**, multi-tool
+exact-match 23.9%, parse failure 0.5%). Compact output format
+(`<tool_N>(args)<end>`) for ~5x faster decode on the 2-core A55 CPU.

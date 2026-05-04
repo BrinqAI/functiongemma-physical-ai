@@ -174,36 +174,6 @@
     },
     {
       "function": {
-        "name": "capture_photo",
-        "description": "Capture a photo from the MIPI camera on the HAT.",
-        "parameters": {
-          "type": "OBJECT",
-          "properties": {
-            "save_as": {
-              "type": "STRING",
-              "description": "Optional filename. Default timestamp-based."
-            }
-          }
-        }
-      }
-    },
-    {
-      "function": {
-        "name": "describe_scene",
-        "description": "Capture a photo and describe what is visible using the Gemma3 vision model on Torq NPU.",
-        "parameters": {
-          "type": "OBJECT",
-          "properties": {
-            "question": {
-              "type": "STRING",
-              "description": "Optional question about the scene. Default: 'What do you see?'"
-            }
-          }
-        }
-      }
-    },
-    {
-      "function": {
         "name": "respond",
         "description": "Reply to the user in natural language without taking any physical action. Use this when the request is out of scope (no matching tool), ambiguous (needs clarification), purely conversational (greetings, thanks), or impossible on this device. Do NOT use this when any physical-action tool fits the request.",
         "parameters": {

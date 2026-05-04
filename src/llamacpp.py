@@ -70,7 +70,10 @@ class FunctionGemmaModel:
             decoded_so_far = self.llm.detokenize(new_tokens, special=True).decode(
                 "utf-8", errors="replace",
             )
-            if "<end_of_turn>" in decoded_so_far or "<end>" in decoded_so_far:
+            # Only stop on the turn-level marker. <end> terminates a single
+            # tool call; multi-tool sequences emit <tool_A>(...)<end><tool_B>(...)<end>,
+            # so stopping at the first <end> would truncate legitimate output.
+            if "<end_of_turn>" in decoded_so_far:
                 break
         latency_ms = (time.time() - t0) * 1000.0
         raw = self.llm.detokenize(new_tokens, special=True).decode("utf-8", errors="replace")
