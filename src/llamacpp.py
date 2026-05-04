@@ -35,8 +35,9 @@ class FunctionGemmaModel:
         n_threads: int = 2,
         n_ctx: int = 2048,
         max_tokens: int = 64,
+        cache_bytes: int = 256 * 1024 * 1024,
     ) -> None:
-        from llama_cpp import Llama  # imported lazily — wheel only on board
+        from llama_cpp import Llama, LlamaRAMCache  # lazy: wheel only on board
 
         self.model_path = model_path
         self.max_tokens = max_tokens
@@ -46,6 +47,9 @@ class FunctionGemmaModel:
             n_threads=n_threads,
             verbose=False,
         )
+        # Cache the tool-declaration prefix so turn 2+ skips ~1200 token
+        # prefill on the 2-core A55 (drops cold ~48s -> warm ~1-3s).
+        self.llm.set_cache(LlamaRAMCache(capacity_bytes=cache_bytes))
         self._tools: list[dict[str, Any]] = json.loads(TOOLS_PATH.read_text())["tools"]
 
     def generate(self, user_text: str) -> GenerationResult:
